@@ -1,14 +1,40 @@
-# Parallel Sum Calculator
+# Parallel Sum with Processes and Pipes
 
-This is my Operating Systems project for process creation and IPC using `fork()` + pipes.
+A small Operating Systems project written in C++ that demonstrates parallel computation using POSIX child processes and inter-process communication.
 
-## Compile and run
+The program creates multiple child processes with `fork()`, divides a vector of random floating-point values between them, collects partial sums through pipes, and compares the final parallel result with a sequential sum for verification.
 
-This program is for Linux/POSIX systems.
+## Concepts Demonstrated
+
+- Process creation with `fork()`
+- Inter-process communication using `pipe()`
+- Parent/child process coordination with `waitpid()`
+- Work partitioning across multiple processes
+- Sequential vs. parallel result verification
+- Basic timing and speedup measurement on Linux
+
+## Requirements
+
+This project is designed for Linux/POSIX environments.
+
+You can run it on:
+
+- Linux
+- WSL on Windows
+- macOS with minor timing-related differences
+
+It will not compile in a normal Windows PowerShell or CMD environment because it uses POSIX system calls such as `fork()`, `pipe()`, and `waitpid()`.
+
+## Build
 
 ```bash
 g++ parallel_sum.cpp -o parallel_sum -Wall -std=c++17
-./parallel_sum <N> <M>
+```
+
+## Run
+
+```bash
+./parallel_sum <vector_size> <num_processes>
 ```
 
 Example:
@@ -17,23 +43,48 @@ Example:
 ./parallel_sum 1000 5
 ```
 
-## What it does
+## How It Works
 
-- Reads `N` (vector size) and `M` (number of child processes).
-- Checks input (`N > 0`, and `1 <= M <= 100`).
-- Fills the vector with random float values in `[-100, 100]`.
-- Splits work across children with:
-  - `base = N / M`
-  - `remainder = N % M`
-  - first `remainder` children get one extra element
-- Each child sums its range and sends one partial sum to parent through its own pipe.
-- Parent reads all partial sums, waits for children, and prints final parallel sum.
-- Program also calculates sequential sum and prints the difference for verification.
-- On Linux, it also prints simple timing and speedup.
+1. The program reads two command-line arguments:
+   - `N`: vector size
+   - `M`: number of child processes
+2. It validates that `N > 0` and `1 <= M <= 100`.
+3. It fills a vector with random `float` values in the range `[-100, 100]`.
+4. It calculates the sequential sum as a reference result.
+5. It splits the vector across `M` child processes:
+   - `base = N / M`
+   - `remainder = N % M`
+   - the first `remainder` children receive one extra element
+6. Each child computes the sum of its assigned range.
+7. Each child sends its partial sum to the parent process through a pipe.
+8. The parent collects all partial sums, waits for every child, and prints the final parallel sum.
+9. The program compares the parallel sum with the sequential sum and prints the difference.
 
-## Test cases used
+## Example Output
 
-I tested with:
+The exact numbers change on each run because the vector values are randomly generated.
+
+```text
+=== Parallel Sum Calculator ===
+Vector size: 1000
+Number of processes: 5
+Vector values (first 10): -12.45, 83.10, 4.72, ...
+Creating 5 child processes...
+Child 0 (PID: 1234): indices [0-199] = 245.67
+Child 1 (PID: 1235): indices [200-399] = -129.44
+Child 2 (PID: 1236): indices [400-599] = 318.90
+Child 3 (PID: 1237): indices [600-799] = -87.31
+Child 4 (PID: 1238): indices [800-999] = 41.20
+
+Parallel sum: 389.02
+Sequential sum: 389.02
+Difference: 0.000000
+Results match! Computation successful.
+```
+
+## Test Cases
+
+These are useful test cases for checking work distribution:
 
 ```bash
 ./parallel_sum 100 4
@@ -41,27 +92,34 @@ I tested with:
 ./parallel_sum 1 5
 ```
 
-Expected behavior:
+Expected distribution:
 
-- `N=100, M=4` -> even split (25 each)
-- `N=100, M=3` -> split is 34, 33, 33
-- `N=1, M=5` -> first child handles 1 item, rest get empty ranges
+- `N = 100`, `M = 4`: each child handles 25 elements
+- `N = 100`, `M = 3`: children handle 34, 33, and 33 elements
+- `N = 1`, `M = 5`: the first child handles 1 element, and the rest receive empty ranges
 
-Output values change every run because numbers are random, but parallel/sequential sums should match within epsilon.
+## Input Validation
 
-## Invalid input handling
+The program handles:
 
-- Missing args -> usage message
-- `N <= 0` -> invalid vector size
-- `M < 1` or `M > 100` -> invalid process count
+- Missing command-line arguments
+- Invalid vector sizes where `N <= 0`
+- Invalid process counts where `M < 1` or `M > 100`
+- Pipe creation failures
+- Fork failures
+- Read/write errors between parent and child processes
 
-## Notes / limitations
+## Limitations
 
-- Uses `fork`, `pipe`, and `waitpid`, so this is Linux/POSIX oriented.
-- Uses `float`, so small precision differences are possible; that is why difference is printed.
-- For very small `N`, process overhead may be larger than performance gain.
+- This is a learning project, not a production parallel computing library.
+- Process creation overhead can be larger than the benefit for small vectors.
+- Floating-point sums may have tiny precision differences, so the program compares results using an epsilon.
+- The timing and speedup output is intended as a simple demonstration, not a formal benchmark.
 
-## Files in submission
+## File Structure
 
-- `parallel_sum.cpp`
-- `PART1_ANSWERS.md`
+```text
+.
++-- README.md
+`-- parallel_sum.cpp
+```
